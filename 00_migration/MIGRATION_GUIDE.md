@@ -187,6 +187,10 @@ powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\OneDrive\bz-office\00
 - **パスの長さ**: OneDrive はパス全体が 400 文字を超えるファイルを同期できない（robocopy 自体は長いパスを扱える）。「ファイル名が長すぎる」エラーが出たら OneDrive を経由せず、**短いパス + USB メモリ** で運ぶ。
   旧 PC: `export-desktop-data.ps1 -Destination E:\cx -IncludeCodeSessions` → USB をミニ PC に差し替え → ミニ PC: `import-desktop-data.ps1 -Source E:\cx`。USB は NTFS か exFAT（FAT32 は 4 GB 超のファイルを置けない）。
   スクリプトは失敗件数と `robocopy-export.log` を出力するので、0 件になるまで出力先を短くする。
+  **USB が無く OneDrive で運ぶ場合**: 短いパスに書き出してから 7-Zip の書庫にまとめ、書庫だけを OneDrive に置く（書庫の中のパス長は OneDrive に影響しない）。
+  旧 PC: `export-desktop-data.ps1 -Destination C:\cx -IncludeCodeSessions` → `pack-desktop-export.ps1`（7-Zip を自動インストールし、`_private\claude-export\desktop.7z.001...` を 2 GB 分割で作る）→ 同期完了を待つ。
+  ミニ PC: `unpack-desktop-export.ps1`（`C:\cx` に展開し、続けて `import-desktop-data.ps1 -Source C:\cx` を実行）。
+  OneDrive の空き容量が書庫の合計（約 11 GB）以上あることを先に確認する。
 - **容量**: `vm_bundles`（Cowork の仮想ディスク）は数 GB になることがある。スクリプトが合計サイズを表示するので、大きければ `-Destination D:\...` で USB など別の場所へ出し、ミニ PC では `-Source` で指定する。
 - **同じユーザー名・同じパス**が前提（今回は両方 `hisas` なので問題なし）。
 - 取り込み後は **コネクタの再接続** と、Desktop 内プロジェクトの **フォルダの選び直し** が必要（公式手順の「ユーザーが再設定するもの」）。
