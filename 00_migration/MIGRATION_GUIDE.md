@@ -184,6 +184,9 @@ powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\OneDrive\bz-office\00
 ```
 
 注意点:
+- **パスの長さ**: OneDrive はパス全体が 400 文字を超えるファイルを同期できない（robocopy 自体は長いパスを扱える）。「ファイル名が長すぎる」エラーが出たら OneDrive を経由せず、**短いパス + USB メモリ** で運ぶ。
+  旧 PC: `export-desktop-data.ps1 -Destination E:\cx -IncludeCodeSessions` → USB をミニ PC に差し替え → ミニ PC: `import-desktop-data.ps1 -Source E:\cx`。USB は NTFS か exFAT（FAT32 は 4 GB 超のファイルを置けない）。
+  スクリプトは失敗件数と `robocopy-export.log` を出力するので、0 件になるまで出力先を短くする。
 - **容量**: `vm_bundles`（Cowork の仮想ディスク）は数 GB になることがある。スクリプトが合計サイズを表示するので、大きければ `-Destination D:\...` で USB など別の場所へ出し、ミニ PC では `-Source` で指定する。
 - **同じユーザー名・同じパス**が前提（今回は両方 `hisas` なので問題なし）。
 - 取り込み後は **コネクタの再接続** と、Desktop 内プロジェクトの **フォルダの選び直し** が必要（公式手順の「ユーザーが再設定するもの」）。

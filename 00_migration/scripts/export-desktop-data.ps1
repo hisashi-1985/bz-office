@@ -35,6 +35,16 @@ $vmKind = if (-not $vm) { "" } elseif ($isMsix -and $vm -like "$pkgRoot*") { "ms
 # 3) 成果物フォルダ
 $homeClaude = @("$env:USERPROFILE\Claude", "$env:USERPROFILE\Documents\Claude") | Where-Object { Test-Path $_ } | Select-Object -First 1
 
+$log = Join-Path $Destination "robocopy-export.log"
+function Copy-Tree($from, $to, $extra) {
+  # robocopy の戻り値 8 以上はコピー失敗あり。ERROR 行をログに残して件数を数える
+  $args = @($from, $to, "/E", "/COPY:DAT", "/R:1", "/W:1", "/NDL", "/NP", "/LOG+:$log") + $extra
+  & robocopy @args | Out-Null
+  $code = $LASTEXITCODE
+  $errs = (Select-String -Path $log -Pattern "ERROR \d+ " -ErrorAction SilentlyContinue | Where-Object { $_.Line -like "*$to*" -or $_.Line -like "*$from*" }).Count
+  if ($code -ge 8) { Write-Host "  !! $from : コピーに失敗したファイルがあります（robocopy code $code）。ログ: $log" }
+  return $code
+}
 function Get-SizeGB($p) { if ($p -and (Test-Path $p)) { $s = (Get-ChildItem $p -Recurse -Force -File -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum; [math]::Round($s / 1GB, 2) } else { 0 } }
 Write-Host "source appData : $appData  ($(Get-SizeGB $appData) GB)"
 Write-Host "source vm      : $vm  ($(Get-SizeGB $vm) GB)"
@@ -42,29 +52,38 @@ Write-Host "source outputs : $homeClaude  ($(Get-SizeGB $homeClaude) GB)"
 Write-Host "destination    : $Destination"
 $total = (Get-SizeGB $appData) + (Get-SizeGB $vm) + (Get-SizeGB $homeClaude)
 if ($total -gt 5) { Write-Host "注意: 合計 $total GB あります。OneDrive 経由だと同期に時間がかかります。USB メモリや外付けドライブを使う場合は -Destination で指定してください。" }
+if ($Destination -like "*\OneDrive\*") { Write-Host "注意: OneDrive はパス全体が 400 文字を超えるファイルを同期できません。長いパスのエラーが出た場合は、-Destination で短いパス（例: E:\cx や C:\cx）を指定し、USB などで運んでください。" }
 New-Item -ItemType Directory -Force -Path $Destination | Out-Null
+if (Test-Path $log) { Remove-Item $log -Force }
 
 # 4) アプリデータ（一時ファイルと再生成されるキャッシュは除外）
-$rc = @("/E","/COPY:DAT","/R:1","/W:1","/NFL","/NDL","/NJH","/NJS","/NP",
+$codes = @()
+$codes += Copy-Tree $appData (Join-Path $Destination "appdata") @(
   "/XF","host-creds-*.json","ccd-environment-config.json","cowork-enabled-cli-ops.json","link-key",
   "/XD","ccd-session-secrets","Cache","Code Cache","GPUCache","DawnGraphiteCache","DawnWebGPUCache","logs")
-robocopy $appData (Join-Path $Destination "appdata") @rc | Out-Null
 Write-Host "  copied appdata\ (local-agent-mode-sessions, claude-code-sessions, ant-did ...)"
-if ($vm) { robocopy $vm (Join-Path $Destination "vm_bundles") /E /COPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null; Write-Host "  copied vm_bundles\" }
-if ($homeClaude) { robocopy $homeClaude (Join-Path $Destination "home-Claude") /E /COPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null; Write-Host "  copied home-Claude\ (成果物)" }
+if ($vm) { $codes += Copy-Tree $vm (Join-Path $Destination "vm_bundles") @(); Write-Host "  copied vm_bundles\" }
+if ($homeClaude) { $codes += Copy-Tree $homeClaude (Join-Path $Destination "home-Claude") @(); Write-Host "  copied home-Claude\ (成果物)" }
 if ($IncludeCodeSessions -and (Test-Path "$env:USERPROFILE\.claude\projects")) {
-  robocopy "$env:USERPROFILE\.claude\projects" (Join-Path $Destination "projects-full") /E /COPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null
+  $codes += Copy-Tree "$env:USERPROFILE\.claude\projects" (Join-Path $Destination "projects-full") @()
   Write-Host "  copied projects-full\ (Code タブの会話記録を含む)"
+}
+$failed = @(Select-String -Path $log -Pattern "ERROR \d+ " -ErrorAction SilentlyContinue)
+if ($failed.Count -gt 0) {
+  Write-Host ""
+  Write-Host "!! コピーに失敗したファイル: $($failed.Count) 件（詳細: $log）"
+  $failed | Select-Object -First 5 | ForEach-Object { Write-Host "   " $_.Line.Trim() }
+  Write-Host "   パスが長すぎる場合は、-Destination で短いパス（例: E:\cx）を指定して再実行してください。"
 }
 
 # 5) マニフェスト（取り込み側で同期完了の確認に使う）
-$files = Get-ChildItem $Destination -Recurse -Force -File
+$files = Get-ChildItem $Destination -Recurse -Force -File | Where-Object { $_.Name -ne "robocopy-export.log" }
 $ver = try { (Get-AppxPackage -Name "*Claude*" -ErrorAction Stop | Select-Object -First 1).Version.ToString() } catch { "" }
 $antDid = if (Test-Path (Join-Path $appData "ant-did")) { Get-Content (Join-Path $appData "ant-did") -Raw } else { "" }
 @{
   exportedAt = (Get-Date -Format s); computer = $env:COMPUTERNAME; user = $env:USERNAME
   desktopVersion = $ver; isMsix = $isMsix; appDataSource = $appData; vmKind = $vmKind; homeClaude = $homeClaude
-  antDidPresent = [bool]$antDid; fileCount = $files.Count; totalBytes = ($files | Measure-Object Length -Sum).Sum
+  antDidPresent = [bool]$antDid; fileCount = $files.Count; totalBytes = ($files | Measure-Object Length -Sum).Sum; failedFiles = $failed.Count
 } | ConvertTo-Json | Out-File (Join-Path $Destination "desktop-manifest.json") -Encoding utf8
 Write-Host "done. files: $($files.Count)  manifest: $(Join-Path $Destination 'desktop-manifest.json')"
-Write-Host "次に: OneDrive の同期完了を待ち、ミニ PC で Claude Desktop を終了してから import-desktop-data.ps1 を実行してください。"
+Write-Host "次に: ミニ PC へ運び（USB なら差し替え、OneDrive なら同期完了を待つ）、Claude Desktop を終了してから import-desktop-data.ps1 -Source <この出力先> を実行してください。"

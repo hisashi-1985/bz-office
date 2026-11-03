@@ -12,11 +12,12 @@ if (-not (Test-Path $manifestPath)) { throw "$manifestPath がありません。
 $m = Get-Content $manifestPath -Raw | ConvertFrom-Json
 
 # 0) 同期が終わっているか（ファイル数と総バイト数をマニフェストと比較）
-$files = Get-ChildItem $Source -Recurse -Force -File | Where-Object { $_.Name -ne "desktop-manifest.json" }
+$files = Get-ChildItem $Source -Recurse -Force -File | Where-Object { $_.Name -ne "desktop-manifest.json" -and $_.Name -ne "robocopy-export.log" }
 $bytes = ($files | Measure-Object Length -Sum).Sum
 if ($files.Count -lt $m.fileCount -or $bytes -lt $m.totalBytes) {
   throw "OneDrive の同期が終わっていないようです（期待 $($m.fileCount) ファイル / $($m.totalBytes) bytes、現在 $($files.Count) / $bytes）。緑チェックになってから再実行してください。"
 }
+if ($m.failedFiles -gt 0) { Write-Host "注意: 旧 PC 側のエクスポートで $($m.failedFiles) 件のコピー失敗がありました（旧 PC の robocopy-export.log 参照）。" }
 if ($m.user -ne $env:USERNAME) { Write-Host "注意: 旧 PC のユーザー名 $($m.user) と異なります（現在 $env:USERNAME）。Code セッションや定期タスクのパスが合わない可能性があります。" }
 
 # 1) Claude Desktop が動いていないか
