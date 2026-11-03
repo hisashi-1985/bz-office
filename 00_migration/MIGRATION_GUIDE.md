@@ -57,8 +57,11 @@
 ### 1-2. Claude Desktop（チャット / Cowork）
 | 項目 | 移行 |
 |---|---|
-| ログイン、チャット履歴、プロジェクト | アカウント同期。何もしない |
+| ログイン、claude.ai（Web）のチャット履歴・プロジェクト | アカウント同期。何もしない |
 | Cowork の スキル / プラグイン / コネクタ（Customize） | アカウント同期。何もしない（ミニ PC の `~/.claude/skills/synced/` に自動で降りてくる） |
+| **Cowork のセッション履歴・Cowork メモリ・プロジェクト（Desktop 内）** | **PC のローカルにしか無い（アカウント同期されない）**。`local-agent-mode-sessions\` ごとコピーが必要 → §3-7 |
+| Desktop の Code タブのセッション一覧 | ローカル（`claude-code-sessions\`）。会話本文は `~/.claude/projects/` → §3-7 で一緒に移せる |
+| Desktop が書き出した成果物 `~\Claude\` | ローカル。§3-7 で一緒にコピー |
 | Desktop チャット用の MCP 設定 `claude_desktop_config.json` | 使っていれば **内容を控えて** ミニ PC で再設定。Windows の保存先は `%APPDATA%\Claude\`。ストア版（MSIX）では `%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude\` に実体がある報告があり、アプリの「設定 › 開発者 › 構成を編集」から開くのが確実 |
 | コネクタ（Google Drive, Slack 等）の認可 | PC ごとに再認可が必要なものがある。初回利用時に案内が出る |
 
@@ -161,6 +164,33 @@ bz-office/.claude/settings.json の permissions（deny と ask）を、~/.claude
 → ルート・`02_work`・`digirise` の 3 つの CLAUDE.md を読んで「ワークスペース: 株式会社デジライズ」と宣言すれば OK。
 `/context` で読み込まれた CLAUDE.md の一覧、`/memory` で自動メモリの場所を確認する。
 
+### 3-7. Cowork（Claude Desktop）の履歴を移す
+Cowork のセッション、Cowork メモリ、Desktop 内のプロジェクト、Code タブのセッション一覧は **アカウント同期されず、PC のローカルにだけ** 保存される。
+保存場所（Windows ストア版）: `%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache\Roaming\Claude\local-agent-mode-sessions\`（従来版は `%APPDATA%\Claude\`）。
+履歴は `ant-did`（デバイス識別子）と組織 ID で紐づくため、公式手順どおり **アプリデータフォルダごと** コピーする。
+
+| 旧 PC | ミニ PC |
+|---|---|
+| 1. Claude Desktop を **完全終了**（トレイのアイコンから終了。タスクマネージャーに `Claude.exe` が無いこと） | 1. Claude Desktop をインストールし、一度起動してログインしてから **完全終了** |
+| 2. `export-desktop-data.ps1` を実行（Code タブの会話本文も移すなら `-IncludeCodeSessions`） | 2. OneDrive が同期済みになるのを待つ |
+| 3. 出力先 `_private\claude-export\desktop\` の同期完了を待つ | 3. `import-desktop-data.ps1` を実行（既存データは `.bak` に退避） |
+| | 4. PC を再起動 → Desktop 起動 → ログイン → サイドバーに旧 PC のセッションが出ることを確認 |
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\OneDrive\bz-office\00_migration\scripts\export-desktop-data.ps1" -IncludeCodeSessions
+```
+```powershell
+powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\OneDrive\bz-office\00_migration\scripts\import-desktop-data.ps1"
+```
+
+注意点:
+- **容量**: `vm_bundles`（Cowork の仮想ディスク）は数 GB になることがある。スクリプトが合計サイズを表示するので、大きければ `-Destination D:\...` で USB など別の場所へ出し、ミニ PC では `-Source` で指定する。
+- **同じユーザー名・同じパス**が前提（今回は両方 `hisas` なので問題なし）。
+- 取り込み後は **コネクタの再接続** と、Desktop 内プロジェクトの **フォルダの選び直し** が必要（公式手順の「ユーザーが再設定するもの」）。
+- 取り込み後、OneDrive 上の `_private\claude-export\desktop\` は削除して容量を戻す（旧 PC に元データは残る）。
+- 旧 PC を使い続けると、**Cowork の定期タスクが両方の PC で動く**。旧 PC 側の定期タスクはオフにする。
+- 出ない場合は、退避した `.bak` 側と取り込んだ側の `ant-did` を比べる。違っていればコピー漏れなので旧 PC で再エクスポートする。
+
 ---
 
 ## 4. 常時稼働の設定（ミニ PC）
@@ -227,6 +257,7 @@ iPhone の Claude アプリから「タスクを送る」と、Desktop（ミニ 
 | `/status` の Setting sources に「Project settings」が出ない | 仕様。`bz-office\.claude\settings.json` は **起動したフォルダ** からしか読まれないため、`02_work\digirise` などサブフォルダで起動すると対象外になる。対処: その deny / ask を `~/.claude/settings.json` の `permissions` に統合する（Claude に「bz-office/.claude/settings.json の permissions を ~/.claude/settings.json に統合して」と指示すればよい）。2026-11-03 のミニ PC 移行で実施済み |
 | OneDrive の衝突ファイルが増える | 「常にこのデバイス上に保持する」になっているか。両 PC で同時に開いていないか |
 | ログインが切れる | `/login` し直す。Remote Control は API キーでは使えないので claude.ai ログインを使う |
+| Cowork のセッションがミニ PC に出ない | Cowork 履歴はアカウント同期されない。§3-7 の手順でアプリデータごとコピーする。コピー後も出ないときは `ant-did` の一致と、Desktop を完全終了してからコピーしたかを確認 |
 
 ---
 
@@ -236,3 +267,4 @@ iPhone の Claude アプリから「タスクを送る」と、Desktop（ミニ 
 - CLAUDE.md の読み込み順・自動メモリ: https://code.claude.com/docs/en/memory
 - 設定ファイルと優先順位: https://code.claude.com/docs/en/settings
 - Desktop アプリ: https://code.claude.com/docs/en/desktop
+- Claude Desktop のローカルデータと別デバイスへの移行（公式）: https://claude.com/docs/third-party/claude-desktop/data-storage

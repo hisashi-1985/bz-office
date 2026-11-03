@@ -1,0 +1,70 @@
+﻿# 旧 PC: Claude Desktop（Cowork / Chat / Code タブ）のローカル履歴を持ち出し用にコピーする
+# 対象: アプリデータ(local-agent-mode-sessions など)、vm_bundles、~\Claude（成果物）、任意で ~\.claude\projects 全体
+# 事前に Claude Desktop を完全終了すること（ウィンドウを閉じるだけでは不十分。トレイから終了）。削除は一切しない。
+param(
+  [string]$Destination = "",
+  [switch]$IncludeCodeSessions
+)
+$ErrorActionPreference = "Stop"
+$root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+if (-not $Destination) { $Destination = Join-Path $root "_private\claude-export\desktop" }
+
+# 0) Claude Desktop が動いていないか
+$running = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path -like "*\Claude.exe" -and $_.Path -notlike "*\.local\bin\*" }
+if ($running) { throw "Claude Desktop が起動中です。タスクトレイの Claude アイコンを右クリックして終了し、タスクマネージャーに Claude.exe が無いことを確認してから再実行してください。" }
+
+# 1) アプリデータの場所を探す（ストア版 MSIX → 従来版 の順）
+$pkgDirs = @(Get-ChildItem "$env:LOCALAPPDATA\Packages" -Directory -Filter "Claude_*" -ErrorAction SilentlyContinue)
+$candidates = @()
+foreach ($p in $pkgDirs) { $candidates += (Join-Path $p.FullName "LocalCache\Roaming\Claude") }
+$candidates += (Join-Path $env:APPDATA "Claude")
+$appData = $candidates | Where-Object { Test-Path (Join-Path $_ "local-agent-mode-sessions") } | Select-Object -First 1
+if (-not $appData) { throw "Cowork の保存フォルダ (local-agent-mode-sessions) が見つかりません。候補: $($candidates -join ' / ')" }
+$isMsix = $appData -like "*\Packages\Claude_*"
+$pkgRoot = if ($isMsix) { ($appData -split "\\LocalCache\\")[0] } else { "" }
+
+# 2) vm_bundles の場所
+$vmCandidates = @()
+if ($isMsix) { $vmCandidates += (Join-Path $pkgRoot "LocalCache\Local\vm_bundles"); $vmCandidates += (Join-Path $pkgRoot "LocalCache\Local\Claude\vm_bundles") }
+$vmCandidates += (Join-Path $env:LOCALAPPDATA "Claude\vm_bundles")
+$vmCandidates += (Join-Path $appData "vm_bundles")
+$vmCandidates += "C:\ClaudeData\vm_bundles"
+$vm = $vmCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+$vmKind = if (-not $vm) { "" } elseif ($isMsix -and $vm -like "$pkgRoot*") { "msix:" + $vm.Substring($pkgRoot.Length + 1) } else { "abs:" + $vm }
+
+# 3) 成果物フォルダ
+$homeClaude = @("$env:USERPROFILE\Claude", "$env:USERPROFILE\Documents\Claude") | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+function Get-SizeGB($p) { if ($p -and (Test-Path $p)) { $s = (Get-ChildItem $p -Recurse -Force -File -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum; [math]::Round($s / 1GB, 2) } else { 0 } }
+Write-Host "source appData : $appData  ($(Get-SizeGB $appData) GB)"
+Write-Host "source vm      : $vm  ($(Get-SizeGB $vm) GB)"
+Write-Host "source outputs : $homeClaude  ($(Get-SizeGB $homeClaude) GB)"
+Write-Host "destination    : $Destination"
+$total = (Get-SizeGB $appData) + (Get-SizeGB $vm) + (Get-SizeGB $homeClaude)
+if ($total -gt 5) { Write-Host "注意: 合計 $total GB あります。OneDrive 経由だと同期に時間がかかります。USB メモリや外付けドライブを使う場合は -Destination で指定してください。" }
+New-Item -ItemType Directory -Force -Path $Destination | Out-Null
+
+# 4) アプリデータ（一時ファイルと再生成されるキャッシュは除外）
+$rc = @("/E","/COPY:DAT","/R:1","/W:1","/NFL","/NDL","/NJH","/NJS","/NP",
+  "/XF","host-creds-*.json","ccd-environment-config.json","cowork-enabled-cli-ops.json","link-key",
+  "/XD","ccd-session-secrets","Cache","Code Cache","GPUCache","DawnGraphiteCache","DawnWebGPUCache","logs")
+robocopy $appData (Join-Path $Destination "appdata") @rc | Out-Null
+Write-Host "  copied appdata\ (local-agent-mode-sessions, claude-code-sessions, ant-did ...)"
+if ($vm) { robocopy $vm (Join-Path $Destination "vm_bundles") /E /COPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null; Write-Host "  copied vm_bundles\" }
+if ($homeClaude) { robocopy $homeClaude (Join-Path $Destination "home-Claude") /E /COPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null; Write-Host "  copied home-Claude\ (成果物)" }
+if ($IncludeCodeSessions -and (Test-Path "$env:USERPROFILE\.claude\projects")) {
+  robocopy "$env:USERPROFILE\.claude\projects" (Join-Path $Destination "projects-full") /E /COPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null
+  Write-Host "  copied projects-full\ (Code タブの会話記録を含む)"
+}
+
+# 5) マニフェスト（取り込み側で同期完了の確認に使う）
+$files = Get-ChildItem $Destination -Recurse -Force -File
+$ver = try { (Get-AppxPackage -Name "*Claude*" -ErrorAction Stop | Select-Object -First 1).Version.ToString() } catch { "" }
+$antDid = if (Test-Path (Join-Path $appData "ant-did")) { Get-Content (Join-Path $appData "ant-did") -Raw } else { "" }
+@{
+  exportedAt = (Get-Date -Format s); computer = $env:COMPUTERNAME; user = $env:USERNAME
+  desktopVersion = $ver; isMsix = $isMsix; appDataSource = $appData; vmKind = $vmKind; homeClaude = $homeClaude
+  antDidPresent = [bool]$antDid; fileCount = $files.Count; totalBytes = ($files | Measure-Object Length -Sum).Sum
+} | ConvertTo-Json | Out-File (Join-Path $Destination "desktop-manifest.json") -Encoding utf8
+Write-Host "done. files: $($files.Count)  manifest: $(Join-Path $Destination 'desktop-manifest.json')"
+Write-Host "次に: OneDrive の同期完了を待ち、ミニ PC で Claude Desktop を終了してから import-desktop-data.ps1 を実行してください。"

@@ -5,6 +5,7 @@
 - [ ] `bz-office` を OneDrive 配下に移動し、「常にこのデバイス上に保持する」にした
 - [ ] `_private/clients.local.md` を作成した（`.example` からコピーして正式名称を記入）
 - [ ] `export-claude-config.ps1`（Mac: `.sh`）を実行し `_private/claude-export/` ができた
+- [ ] Claude Desktop を完全終了してから `export-desktop-data.ps1 -IncludeCodeSessions` を実行し `_private/claude-export/desktop/` ができた（Cowork 履歴）
 - [ ] OneDrive が同期済み（緑チェック）になった
 
 ## B. ミニ PC
@@ -14,6 +15,9 @@
 - [ ] Claude Desktop インストール・ログイン
 - [ ] Claude Code インストール、`bz-office` で `claude` → `/login` → フォルダ信頼
 - [ ] `import-claude-config.ps1` を実行した
+- [ ] Claude Desktop を一度起動・ログインしてから完全終了し、`import-desktop-data.ps1` を実行 → 再起動 → Cowork のサイドバーに旧 PC のセッションが出た
+- [ ] Desktop のコネクタを再接続し、プロジェクトのフォルダを選び直した
+- [ ] 取り込み後、OneDrive 上の `_private/claude-export/desktop/` を削除した
 - [ ] MCP サーバーを再登録した / プラグインを再インストールした
 - [ ] `02_work/digirise` で起動し「ワークスペース: 株式会社デジライズ」と宣言される
 - [ ] `/context` に ルート・`02_work`・`digirise` の CLAUDE.md が出る
