@@ -148,6 +148,14 @@ powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\OneDrive\bz-office\00
 `%USERPROFILE%\.claude\projects\` の中に、旧 PC のパス由来の名前（例 `C--Users-old-OneDrive-bz-office`）のフォルダがある。
 ミニ PC で一度 `bz-office` から `claude` を起動すると新しい名前のフォルダができるので、旧フォルダの `memory\` を新フォルダの `memory\` に移動する。
 
+### 3-5b. プロジェクト設定をユーザー設定へ統合（推奨）
+`bz-office\.claude\settings.json` の deny / ask は、サブフォルダ（`02_work\digirise` など）で起動したセッションには効かない。
+Claude に次を指示して `~/.claude/settings.json` に統合しておく。
+
+```
+bz-office/.claude/settings.json の permissions（deny と ask）を、~/.claude/settings.json の permissions に統合して。既存の allow と defaultMode は残して。変更前に .bak を取って。
+```
+
 ### 3-6. 動作確認
 `OneDrive\bz-office\02_work\digirise` で `claude` を起動し、「このワークスペースはどこ？」と聞く。
 → ルート・`02_work`・`digirise` の 3 つの CLAUDE.md を読んで「ワークスペース: 株式会社デジライズ」と宣言すれば OK。
@@ -216,6 +224,7 @@ iPhone の Claude アプリから「タスクを送る」と、Desktop（ミニ 
 | 「Workspace not trusted」で止まる | 無人起動前に一度手動で `claude` を起動し、フォルダの信頼に `y` |
 | 自動メモリが引き継がれない | `/memory` で現在の保存先を確認し、§3-5 の通り旧フォルダから `memory\` を移動 |
 | CLAUDE.md が読まれていない | `/context` の Memory files を見る。サブフォルダの CLAUDE.md はそのフォルダ内のファイルを触った時点で読まれる（起動時ではない） |
+| `/status` の Setting sources に「Project settings」が出ない | 仕様。`bz-office\.claude\settings.json` は **起動したフォルダ** からしか読まれないため、`02_work\digirise` などサブフォルダで起動すると対象外になる。対処: その deny / ask を `~/.claude/settings.json` の `permissions` に統合する（Claude に「bz-office/.claude/settings.json の permissions を ~/.claude/settings.json に統合して」と指示すればよい）。2026-11-03 のミニ PC 移行で実施済み |
 | OneDrive の衝突ファイルが増える | 「常にこのデバイス上に保持する」になっているか。両 PC で同時に開いていないか |
 | ログインが切れる | `/login` し直す。Remote Control は API キーでは使えないので claude.ai ログインを使う |
 

@@ -18,6 +18,8 @@
 - [ ] `02_work/digirise` で起動し「ワークスペース: 株式会社デジライズ」と宣言される
 - [ ] `/context` に ルート・`02_work`・`digirise` の CLAUDE.md が出る
 - [ ] `/memory` で自動メモリの場所を確認した（必要なら旧 `memory/` を移動）
+- [ ] `bz-office/.claude/settings.json` の deny / ask を `~/.claude/settings.json` に統合した（§3-5b）
+- [ ] `client-a のフォルダにある資料を参考にして` と送り、承認を求めて止まることを確認した
 
 ## C. 常時稼働
 - [ ] スリープ「なし」、アクティブ時間を設定
