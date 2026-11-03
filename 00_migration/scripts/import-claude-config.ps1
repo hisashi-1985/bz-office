@@ -1,4 +1,4 @@
-# ミニ PC: _private\claude-export の内容を %USERPROFILE%\.claude に取り込む
+﻿# ミニ PC: _private\claude-export の内容を %USERPROFILE%\.claude に取り込む
 # 既存ファイルがある場合は .bak.<日時> に退避してから置く。削除はしない。
 $ErrorActionPreference = "Stop"
 $dst = Join-Path $env:USERPROFILE ".claude"

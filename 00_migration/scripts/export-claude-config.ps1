@@ -1,4 +1,4 @@
-# 旧 PC: Claude Code の持ち出し可能な設定だけを OneDrive\bz-office\_private\claude-export にコピーする
+﻿# 旧 PC: Claude Code の持ち出し可能な設定だけを OneDrive\bz-office\_private\claude-export にコピーする
 # 資格情報 (.credentials.json, ~/.claude.json) はコピーしない。削除も一切しない。
 $ErrorActionPreference = "Stop"
 $src = Join-Path $env:USERPROFILE ".claude"

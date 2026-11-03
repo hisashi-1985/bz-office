@@ -1,4 +1,4 @@
-# ミニ PC 初期セットアップ（Windows）
+﻿# ミニ PC 初期セットアップ（Windows）
 # 1 回だけ実行する。Git の導入、リポジトリの取得、OneDrive の常時保持、Claude Code の導入を行う。
 # 実行方法（PowerShell）:
 #   irm https://raw.githubusercontent.com/hisashi-1985/bz-office/claude/happy-allen-a29mju/00_migration/scripts/setup-new-pc.ps1 | iex
