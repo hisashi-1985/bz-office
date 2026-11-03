@@ -50,7 +50,11 @@ Write-Host "source appData : $appData  ($(Get-SizeGB $appData) GB)"
 Write-Host "source vm      : $vm  ($(Get-SizeGB $vm) GB)"
 Write-Host "source outputs : $homeClaude  ($(Get-SizeGB $homeClaude) GB)"
 Write-Host "destination    : $Destination"
-$total = (Get-SizeGB $appData) + (Get-SizeGB $vm) + (Get-SizeGB $homeClaude)
+$total = (Get-SizeGB $appData) + (Get-SizeGB $homeClaude)
+if ($vm -and -not ($vm -like "$appData\*")) { $total += (Get-SizeGB $vm) }
+if (-not (Test-Path (Split-Path -Qualifier $Destination))) { throw "出力先のドライブ $(Split-Path -Qualifier $Destination) が見つかりません。USB を挿し、エクスプローラーでドライブ文字を確認して -Destination を指定し直してください（例: -Destination D:\cx）。" }
+$free = [math]::Round((Get-PSDrive (Split-Path -Qualifier $Destination).TrimEnd(':')).Free / 1GB, 2)
+if ($free -lt $total + 1) { throw "出力先の空き容量が足りません（必要 約 $total GB、空き $free GB）。" }
 if ($total -gt 5) { Write-Host "注意: 合計 $total GB あります。OneDrive 経由だと同期に時間がかかります。USB メモリや外付けドライブを使う場合は -Destination で指定してください。" }
 if ($Destination -like "*\OneDrive\*") { Write-Host "注意: OneDrive はパス全体が 400 文字を超えるファイルを同期できません。長いパスのエラーが出た場合は、-Destination で短いパス（例: E:\cx や C:\cx）を指定し、USB などで運んでください。" }
 New-Item -ItemType Directory -Force -Path $Destination | Out-Null
@@ -58,9 +62,10 @@ if (Test-Path $log) { Remove-Item $log -Force }
 
 # 4) アプリデータ（一時ファイルと再生成されるキャッシュは除外）
 $codes = @()
-$codes += Copy-Tree $appData (Join-Path $Destination "appdata") @(
-  "/XF","host-creds-*.json","ccd-environment-config.json","cowork-enabled-cli-ops.json","link-key",
-  "/XD","ccd-session-secrets","Cache","Code Cache","GPUCache","DawnGraphiteCache","DawnWebGPUCache","logs")
+$xd = @("/XD","ccd-session-secrets","Cache","Code Cache","GPUCache","DawnGraphiteCache","DawnWebGPUCache","logs")
+if ($vm -and $vm -like "$appData\*") { $xd += "vm_bundles" }   # appData 内にある場合は別枠でコピーするので二重にしない
+$codes += Copy-Tree $appData (Join-Path $Destination "appdata") (@(
+  "/XF","host-creds-*.json","ccd-environment-config.json","cowork-enabled-cli-ops.json","link-key") + $xd)
 Write-Host "  copied appdata\ (local-agent-mode-sessions, claude-code-sessions, ant-did ...)"
 if ($vm) { $codes += Copy-Tree $vm (Join-Path $Destination "vm_bundles") @(); Write-Host "  copied vm_bundles\" }
 if ($homeClaude) { $codes += Copy-Tree $homeClaude (Join-Path $Destination "home-Claude") @(); Write-Host "  copied home-Claude\ (成果物)" }
