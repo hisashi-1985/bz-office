@@ -7,15 +7,22 @@ $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 if (-not $Source) { $Source = Join-Path $root "_private\claude-export\desktop" }
 $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
 
+# 長いパス（260 文字超）でも数えられるように \\?\ 接頭辞で列挙する
+function Get-TreeStats($path, $excludeNames) {
+  $lp = if ($path -like "\\?\*") { $path } else { "\\?\" + $path }
+  $items = @(Get-ChildItem -LiteralPath $lp -Recurse -Force -File -ErrorAction SilentlyContinue | Where-Object { $excludeNames -notcontains $_.Name })
+  $sum = ($items | Measure-Object Length -Sum).Sum
+  if (-not $sum) { $sum = 0 }
+  return @{ Count = $items.Count; Bytes = [long]$sum }
+}
 $manifestPath = Join-Path $Source "desktop-manifest.json"
 if (-not (Test-Path $manifestPath)) { throw "$manifestPath がありません。旧 PC で export-desktop-data.ps1 を実行し、OneDrive の同期完了を待ってください。" }
 $m = Get-Content $manifestPath -Raw | ConvertFrom-Json
 
 # 0) 同期が終わっているか（ファイル数と総バイト数をマニフェストと比較）
-$files = Get-ChildItem $Source -Recurse -Force -File | Where-Object { $_.Name -ne "desktop-manifest.json" -and $_.Name -ne "robocopy-export.log" }
-$bytes = ($files | Measure-Object Length -Sum).Sum
-if ($files.Count -lt $m.fileCount -or $bytes -lt $m.totalBytes) {
-  throw "OneDrive の同期が終わっていないようです（期待 $($m.fileCount) ファイル / $($m.totalBytes) bytes、現在 $($files.Count) / $bytes）。緑チェックになってから再実行してください。"
+$st = Get-TreeStats $Source @("desktop-manifest.json","robocopy-export.log")
+if ($st.Count -lt $m.fileCount -or $st.Bytes -lt $m.totalBytes) {
+  throw "転送が終わっていないようです（期待 $($m.fileCount) ファイル / $($m.totalBytes) bytes、現在 $($st.Count) / $($st.Bytes)）。OneDrive の同期完了、または展開の完了を確認してから再実行してください。"
 }
 if ($m.failedFiles -gt 0) { Write-Host "注意: 旧 PC 側のエクスポートで $($m.failedFiles) 件のコピー失敗がありました（旧 PC の robocopy-export.log 参照）。" }
 if ($m.user -ne $env:USERNAME) { Write-Host "注意: 旧 PC のユーザー名 $($m.user) と異なります（現在 $env:USERNAME）。Code セッションや定期タスクのパスが合わない可能性があります。" }

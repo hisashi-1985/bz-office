@@ -35,6 +35,14 @@ $vmKind = if (-not $vm) { "" } elseif ($isMsix -and $vm -like "$pkgRoot*") { "ms
 # 3) 成果物フォルダ
 $homeClaude = @("$env:USERPROFILE\Claude", "$env:USERPROFILE\Documents\Claude") | Where-Object { Test-Path $_ } | Select-Object -First 1
 
+# 長いパス（260 文字超）でも数えられるように \\?\ 接頭辞で列挙する
+function Get-TreeStats($path, $excludeNames) {
+  $lp = if ($path -like "\\?\*") { $path } else { "\\?\" + $path }
+  $items = @(Get-ChildItem -LiteralPath $lp -Recurse -Force -File -ErrorAction SilentlyContinue | Where-Object { $excludeNames -notcontains $_.Name })
+  $sum = ($items | Measure-Object Length -Sum).Sum
+  if (-not $sum) { $sum = 0 }
+  return @{ Count = $items.Count; Bytes = [long]$sum }
+}
 $log = Join-Path $Destination "robocopy-export.log"
 function Copy-Tree($from, $to, $extra) {
   # robocopy の戻り値 8 以上はコピー失敗あり。ERROR 行をログに残して件数を数える
@@ -45,7 +53,7 @@ function Copy-Tree($from, $to, $extra) {
   if ($code -ge 8) { Write-Host "  !! $from : コピーに失敗したファイルがあります（robocopy code $code）。ログ: $log" }
   return $code
 }
-function Get-SizeGB($p) { if ($p -and (Test-Path $p)) { $s = (Get-ChildItem $p -Recurse -Force -File -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum; [math]::Round($s / 1GB, 2) } else { 0 } }
+function Get-SizeGB($p) { if ($p -and (Test-Path $p)) { [math]::Round((Get-TreeStats $p @()).Bytes / 1GB, 2) } else { 0 } }
 Write-Host "source appData : $appData  ($(Get-SizeGB $appData) GB)"
 Write-Host "source vm      : $vm  ($(Get-SizeGB $vm) GB)"
 Write-Host "source outputs : $homeClaude  ($(Get-SizeGB $homeClaude) GB)"
@@ -82,13 +90,13 @@ if ($failed.Count -gt 0) {
 }
 
 # 5) マニフェスト（取り込み側で同期完了の確認に使う）
-$files = Get-ChildItem $Destination -Recurse -Force -File | Where-Object { $_.Name -ne "robocopy-export.log" }
+$stats = Get-TreeStats $Destination @("robocopy-export.log","desktop-manifest.json")
 $ver = try { (Get-AppxPackage -Name "*Claude*" -ErrorAction Stop | Select-Object -First 1).Version.ToString() } catch { "" }
 $antDid = if (Test-Path (Join-Path $appData "ant-did")) { Get-Content (Join-Path $appData "ant-did") -Raw } else { "" }
 @{
   exportedAt = (Get-Date -Format s); computer = $env:COMPUTERNAME; user = $env:USERNAME
   desktopVersion = $ver; isMsix = $isMsix; appDataSource = $appData; vmKind = $vmKind; homeClaude = $homeClaude
-  antDidPresent = [bool]$antDid; fileCount = $files.Count; totalBytes = ($files | Measure-Object Length -Sum).Sum; failedFiles = $failed.Count
+  antDidPresent = [bool]$antDid; fileCount = $stats.Count; totalBytes = $stats.Bytes; failedFiles = $failed.Count
 } | ConvertTo-Json | Out-File (Join-Path $Destination "desktop-manifest.json") -Encoding utf8
-Write-Host "done. files: $($files.Count)  manifest: $(Join-Path $Destination 'desktop-manifest.json')"
+Write-Host "done. files: $($stats.Count)  manifest: $(Join-Path $Destination 'desktop-manifest.json')"
 Write-Host "次に: ミニ PC へ運び（USB なら差し替え、OneDrive なら同期完了を待つ）、Claude Desktop を終了してから import-desktop-data.ps1 -Source <この出力先> を実行してください。"
