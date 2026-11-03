@@ -1,0 +1,25 @@
+# ---- Claude: 個人設定・ローカル専用（PC ごと / OneDrive でのみ共有） ----
+CLAUDE.local.md
+**/CLAUDE.local.md
+.claude/settings.local.json
+.claude/memory/
+_private/*
+!_private/README.md
+!_private/clients.local.md.example
+
+# ---- クライアント実データ（公開リポジトリに載せない） ----
+# 各ワークスペースの部門フォルダ配下は README.md と .gitkeep 以外コミットしない
+02_work/**/*
+!02_work/**/
+!02_work/**/CLAUDE.md
+!02_work/**/README.md
+!02_work/**/.gitkeep
+
+# ---- Office / OS / OneDrive の一時ファイル ----
+~$*
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
+desktop.ini
+*.lnk
