@@ -17,6 +17,7 @@ export function Dashboard() {
   const prevPlan = useMemo(() => monthlyPlan(data, addMonths(fy, -12), currentMonth), [data, fy, currentMonth]);
   const cash = useMemo(() => cashForecast(data, ledger, currentMonth, 6), [data, ledger, currentMonth]);
 
+  const totalBudget = plan.reduce((s, m) => s + m.budget, 0);
   const totalActual = plan.reduce((s, m) => s + m.actual, 0);
   const totalForecast = plan.reduce((s, m) => s + m.forecast, 0);
   const landing = plan.reduce((s, m) => s + m.landing, 0);
@@ -32,6 +33,7 @@ export function Dashboard() {
   const chart = fiscalMonths(fy).map((m, i) => ({
     name: monthLabel(m),
     実績: plan[i].actual || null,
+    予算: plan[i].budget || null,
     予測: plan[i].forecast || null,
     前期実績: prevPlan[i].actual || null,
   }));
@@ -48,7 +50,14 @@ export function Dashboard() {
         <Kpi
           label="着地見込"
           value={yen(landing)}
-          sub={totalForecast ? `予測合計 ${yen(totalForecast)}` : '予測未入力（売上予測タブで作成）'}
+          sub={
+            totalBudget
+              ? `予算 ${yen(totalBudget)} の ${pct(landing / totalBudget)}`
+              : totalForecast
+                ? `予測合計 ${yen(totalForecast)}（予算未登録）`
+                : '予測未入力（売上予測タブで作成）'
+          }
+          tone={totalBudget ? (landing >= totalBudget ? 'good' : 'warn') : undefined}
         />
         <Kpi
           label="経過月の予実差"
@@ -71,6 +80,7 @@ export function Dashboard() {
               <Legend />
               <Bar dataKey="前期実績" fill="var(--c-prev)" radius={[3, 3, 0, 0]} />
               <Bar dataKey="実績" fill="var(--c-actual)" radius={[3, 3, 0, 0]} />
+              <Line dataKey="予算" stroke="var(--c-budget)" strokeWidth={2} dot={{ r: 3 }} connectNulls />
               <Line dataKey="予測" stroke="var(--c-forecast)" strokeWidth={2} strokeDasharray="6 4" dot={{ r: 3 }} connectNulls />
             </ComposedChart>
           </ResponsiveContainer>

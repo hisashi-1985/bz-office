@@ -23,6 +23,7 @@ export const weighted = (line: ForecastLine, month: MonthStr) =>
 
 export interface MonthPlan {
   month: MonthStr;
+  budget: number;
   actual: number;
   forecast: number;
   /** 着地見込：経過月は実績、当月以降は max(実績, 予測) */
@@ -34,8 +35,9 @@ export function monthlyPlan(data: AppData, fyStart: MonthStr, currentMonth: Mont
   return fiscalMonths(fyStart).map((month) => {
     const actual = data.invoices.filter((i) => monthOf(i.date) === month).reduce((s, i) => s + i.net, 0);
     const forecast = data.forecasts.reduce((s, l) => s + weighted(l, month), 0);
+    const budget = (data.budgets ?? []).reduce((s, l) => s + (l.amounts[month] ?? 0), 0);
     const isPast = month < currentMonth;
-    return { month, actual, forecast, landing: isPast ? actual : Math.max(actual, forecast), isPast };
+    return { month, budget, actual, forecast, landing: isPast ? actual : Math.max(actual, forecast), isPast };
   });
 }
 

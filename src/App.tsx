@@ -4,6 +4,8 @@ import { Dashboard } from './views/Dashboard';
 import { SalesView } from './views/SalesView';
 import { ReceiptsView } from './views/ReceiptsView';
 import { ForecastView } from './views/ForecastView';
+import { BudgetView } from './views/BudgetView';
+import { CompareView } from './views/CompareView';
 import { CustomersView } from './views/CustomersView';
 import { DataView } from './views/DataView';
 
@@ -11,7 +13,9 @@ const TABS = [
   { id: 'dashboard', label: 'ダッシュボード', el: Dashboard },
   { id: 'sales', label: '売上管理', el: SalesView },
   { id: 'receipts', label: '入金管理', el: ReceiptsView },
+  { id: 'budget', label: '予算', el: BudgetView },
   { id: 'forecast', label: '売上予測', el: ForecastView },
+  { id: 'compare', label: '予実比較', el: CompareView },
   { id: 'customers', label: '取引先', el: CustomersView },
   { id: 'data', label: 'データ取込', el: DataView },
 ] as const;

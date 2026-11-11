@@ -3,6 +3,7 @@ import { importMfJournal } from './mfImport';
 import { applyInferredTerms, reconcile } from './matching';
 import { mergeImport } from './merge';
 import { cashForecast, generateForecasts, monthlyPlan } from './forecast';
+import { compareByCustomer, generateBudget } from './budget';
 import { dueDate, fiscalYearStart } from './dates';
 import { extractInvoiceNo, nameKey } from './names';
 import { parseCsv } from './csv';
@@ -15,6 +16,7 @@ const empty = (): AppData => ({
   invoices: [],
   receipts: [],
   forecasts: [],
+  budgets: [],
   settings: { fiscalStartMonth: 11, taxRate: 0.1, openingAR: {} },
 });
 const TODAY = '2026-03-15';
@@ -131,5 +133,38 @@ describe('forecast', () => {
     const d = load();
     d.forecasts = [{ id: 'x', label: '新規', customerId: null, probability: 50, amounts: { '2026-12': 1000000 }, note: '' }];
     expect(monthlyPlan(d, '2026-11', '2026-11')[1].forecast).toBe(500000);
+  });
+});
+
+describe('budget', () => {
+  test('from previous-year actuals with growth, rounded to 1,000', () => {
+    const d = load();
+    d.budgets = generateBudget(d, '2026-11', 'prevActual', 10);
+    const sample = d.budgets.find((b) => b.customerId === cid(d, 'サンプル'))!;
+    expect(sample.amounts['2026-11']).toBe(330000); // 300,000 × 1.1
+    expect(sample.amounts['2026-12']).toBe(110000);
+  });
+  test('regenerating one FY keeps other FYs', () => {
+    const d = load();
+    d.budgets = [{ id: 'old', label: '全社', customerId: null, amounts: { '2025-11': 999000, '2026-11': 1 }, note: '' }];
+    d.budgets = generateBudget(d, '2026-11', 'prevActual', 0);
+    expect(d.budgets.find((b) => b.id === 'old')!.amounts).toEqual({ '2025-11': 999000 });
+  });
+  test('plan and per-customer comparison', () => {
+    const d = load();
+    d.budgets = [
+      { id: 'b1', label: 'サンプル', customerId: cid(d, 'サンプル'), amounts: { '2025-11': 400000, '2025-12': 100000 }, note: '' },
+      { id: 'b2', label: '新規開拓', customerId: null, amounts: { '2026-01': 50000 }, note: '' },
+    ];
+    const plan = monthlyPlan(d, '2025-11', '2026-01');
+    expect(plan[0].budget).toBe(400000);
+    const rows = compareByCustomer(d, '2025-11', '2026-01');
+    const s = rows.find((r) => r.label.includes('サンプル'))!;
+    expect(s.budget).toBe(500000);
+    expect(s.budgetToDate).toBe(500000);
+    expect(s.actualToDate).toBe(400000); // 11月 300,000 + 12月 100,000
+    const n = rows.find((r) => r.label === '新規開拓')!;
+    expect(n.budgetToDate).toBe(0);
+    expect(n.landing).toBe(0);
   });
 });

@@ -103,7 +103,7 @@ export function DataView() {
           </button>
         </div>
         <p className="note">
-          現在のデータ：取引先 {data.customers.length} / 請求 {data.invoices.length} / 入金 {data.receipts.length} / 予測 {data.forecasts.length}
+          現在のデータ：取引先 {data.customers.length} / 請求 {data.invoices.length} / 入金 {data.receipts.length} / 予算 {(data.budgets ?? []).length} / 予測 {data.forecasts.length}
         </p>
       </Section>
 

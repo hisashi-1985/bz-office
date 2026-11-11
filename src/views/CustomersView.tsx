@@ -42,7 +42,7 @@ export function CustomersView() {
     if (!mergeFrom || !mergeTo || mergeFrom === mergeTo) return;
     const from = data.customers.find((c) => c.id === mergeFrom)!;
     const to = data.customers.find((c) => c.id === mergeTo)!;
-    if (!confirm(`「${from.name}」を「${to.name}」に統合します。請求・入金・予測の取引先も付け替えます。`)) return;
+    if (!confirm(`「${from.name}」を「${to.name}」に統合します。請求・入金・予算・予測の取引先も付け替えます。`)) return;
     const re = <T extends { customerId: string | null }>(x: T): T => (x.customerId === mergeFrom ? { ...x, customerId: mergeTo } : x);
     setData((d) => ({
       ...d,
@@ -52,6 +52,7 @@ export function CustomersView() {
       invoices: d.invoices.map(re),
       receipts: d.receipts.map(re),
       forecasts: d.forecasts.map(re),
+      budgets: (d.budgets ?? []).map(re),
     }));
     setMergeFrom('');
   };

@@ -16,6 +16,7 @@
   --c-actual: #2557d6;
   --c-forecast: #e07b00;
   --c-prev: #c5cfe3;
+  --c-budget: #2f8a5b;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -37,6 +38,7 @@
     --c-actual: #6b93ff;
     --c-forecast: #ffa53d;
     --c-prev: #3c4659;
+    --c-budget: #5fd39a;
     color-scheme: dark;
   }
 }
@@ -160,3 +162,13 @@ button.link.danger { color: var(--danger); }
 .forecast .sticky { width: 220px; min-width: 220px; max-width: 220px; }
 .forecast .sticky input, .forecast .sticky select { display: block; width: 100%; }
 .forecast td.r:nth-child(2), .forecast th:nth-child(2) { min-width: 84px; white-space: nowrap; }
+
+.good-text { color: var(--good); }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; padding: 5px 14px; }
+.seg button.active { background: var(--accent); color: #fff; }
+label.inline { display: inline-flex; align-items: center; gap: 4px; }
+.meter { height: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+.meter-fill { height: 100%; background: var(--danger); }
+.meter-fill.warn { background: var(--warn); }
+.meter-fill.good-text { background: var(--good); }

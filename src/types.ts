@@ -64,6 +64,16 @@ export interface ForecastLine {
   note: string;
 }
 
+export interface BudgetLine {
+  id: string;
+  /** 取引先名・区分名（例：全社、新規開拓） */
+  label: string;
+  customerId: string | null;
+  /** 月別の売上予算（税抜） */
+  amounts: Record<MonthStr, number>;
+  note: string;
+}
+
 export interface Settings {
   /** 期首月（1〜12） */
   fiscalStartMonth: number;
@@ -79,5 +89,6 @@ export interface AppData {
   invoices: Invoice[];
   receipts: Receipt[];
   forecasts: ForecastLine[];
+  budgets: BudgetLine[];
   settings: Settings;
 }

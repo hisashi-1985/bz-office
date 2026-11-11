@@ -11,6 +11,7 @@ export const emptyData = (): AppData => ({
   invoices: [],
   receipts: [],
   forecasts: [],
+  budgets: [],
   settings: { fiscalStartMonth: 11, taxRate: 0.1, openingAR: {} },
 });
 
