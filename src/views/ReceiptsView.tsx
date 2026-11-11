@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { notify } from '../components/dialog';
 import { useCustomerName, useStore } from '../store';
 import { Empty, Kpi, Section, StatusBadge } from '../components/ui';
 import { todayStr } from '../lib/dates';
@@ -205,7 +206,7 @@ function NewReceiptForm() {
   if (!open) return <button className="primary small" onClick={() => setOpen(true)}>＋ 入金を手入力</button>;
   const submit = () => {
     const amount = parseAmount(f.amount);
-    if (!f.customerId || !amount) return alert('取引先と入金額を入力してください');
+    if (!f.customerId || !amount) return void notify('取引先と入金額を入力してください。');
     setData((d) => ({
       ...d,
       receipts: [

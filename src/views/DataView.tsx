@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { askConfirm } from '../components/dialog';
 import { emptyData, useStore } from '../store';
 import { Section } from '../components/ui';
 import { decodeCsvBytes } from '../lib/csv';
@@ -29,7 +30,7 @@ export function DataView() {
 
   const apply = () => {
     if (!preview) return;
-    setData((d) => mergeImport(d, preview.result, today));
+    setData((d) => mergeImport(d.settings.sample ? emptyData() : d, preview.result, today));
     setDone(`${preview.file} を取り込みました（売上 ${preview.result.invoices.length}件 / 入金 ${preview.result.receipts.length}件）`);
     setPreview(null);
   };
@@ -38,7 +39,7 @@ export function DataView() {
     try {
       const parsed = JSON.parse(await file.text()) as AppData;
       if (parsed.version !== 1 || !Array.isArray(parsed.invoices)) throw new Error('バックアップファイルの形式が正しくありません');
-      if (!confirm('現在のデータをバックアップの内容で置き換えます。よろしいですか？')) return;
+      if (!(await askConfirm('現在のデータをバックアップの内容で置き換えます。', { okLabel: '復元する', danger: true }))) return;
       setData(() => ({ ...emptyData(), ...parsed }));
       setDone('バックアップから復元しました');
     } catch (e) {
@@ -97,7 +98,7 @@ export function DataView() {
           <button onClick={() => { if (jsonRef.current) { jsonRef.current.value = ''; jsonRef.current.click(); } }}>バックアップから復元</button>
           <button
             className="danger"
-            onClick={() => confirm('すべてのデータを削除します。元に戻せません。よろしいですか？') && setData(() => emptyData())}
+            onClick={async () => (await askConfirm('すべてのデータを削除します。元に戻せません。', { okLabel: '削除する', danger: true })) && setData(() => emptyData())}
           >
             全データを削除
           </button>

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { askConfirm } from '../components/dialog';
 import { useStore } from '../store';
 import { Section } from '../components/ui';
 import { termsLabel } from '../lib/dates';
@@ -38,11 +39,11 @@ export function CustomersView() {
     setNewName('');
   };
 
-  const merge = () => {
+  const merge = async () => {
     if (!mergeFrom || !mergeTo || mergeFrom === mergeTo) return;
     const from = data.customers.find((c) => c.id === mergeFrom)!;
     const to = data.customers.find((c) => c.id === mergeTo)!;
-    if (!confirm(`「${from.name}」を「${to.name}」に統合します。請求・入金・予算・予測の取引先も付け替えます。`)) return;
+    if (!(await askConfirm(`「${from.name}」を「${to.name}」に統合します。請求・入金・予算・予測の取引先も付け替えます。`, { okLabel: '統合する' }))) return;
     const re = <T extends { customerId: string | null }>(x: T): T => (x.customerId === mergeFrom ? { ...x, customerId: mergeTo } : x);
     setData((d) => ({
       ...d,

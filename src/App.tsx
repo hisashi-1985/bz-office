@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useStore } from './store';
+import { emptyData, useStore } from './store';
 import { Dashboard } from './views/Dashboard';
 import { SalesView } from './views/SalesView';
 import { ReceiptsView } from './views/ReceiptsView';
@@ -8,6 +8,7 @@ import { BudgetView } from './views/BudgetView';
 import { CompareView } from './views/CompareView';
 import { CustomersView } from './views/CustomersView';
 import { DataView } from './views/DataView';
+import { DialogHost } from './components/dialog';
 
 const TABS = [
   { id: 'dashboard', label: 'ダッシュボード', el: Dashboard },
@@ -27,7 +28,7 @@ const readHash = (): TabId => {
 };
 
 export function App() {
-  const { data, saveError } = useStore();
+  const { data, setData, saveError } = useStore();
   const [tab, setTab] = useState<TabId>(() => (data.invoices.length ? readHash() : 'data'));
   useEffect(() => {
     const on = () => setTab(readHash());
@@ -53,9 +54,21 @@ export function App() {
         </nav>
       </header>
       {saveError && <div className="banner error">{saveError}</div>}
+      {data.settings.sample && (
+        <div className="sample-bar">
+          <span>
+            <strong>サンプル表示中</strong>：架空の会社のデータです。「データ取込」で自社の仕訳帳CSVを取り込むと置き換わります。
+          </span>
+          <span className="sample-actions">
+            <button className="primary small" onClick={() => go('data')}>CSVを取り込む</button>
+            <button className="small" onClick={() => setData(() => emptyData())}>サンプルを消す</button>
+          </span>
+        </div>
+      )}
       <main>
         <View />
       </main>
+      <DialogHost />
     </div>
   );
 }

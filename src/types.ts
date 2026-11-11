@@ -81,6 +81,8 @@ export interface Settings {
   taxRate: number;
   /** 期首売掛金（開始仕訳から取得） key=期首月 'YYYY-MM' */
   openingAR: Record<MonthStr, number>;
+  /** 架空のサンプルデータを表示中 */
+  sample?: boolean;
 }
 
 export interface AppData {

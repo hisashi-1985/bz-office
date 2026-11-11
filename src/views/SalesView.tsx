@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { askConfirm, notify } from '../components/dialog';
 import { useCustomerName, useStore } from '../store';
 import { Empty, FiscalSelect, Section, StatusBadge, STATUS_LABEL, useCurrentFiscal } from '../components/ui';
 import { fiscalMonths, monthLabel, monthOf, todayStr } from '../lib/dates';
@@ -172,7 +173,7 @@ export function SalesView() {
                   <td><StatusBadge status={i.status} /></td>
                   <td>
                     {i.source === 'manual' && (
-                      <button className="link danger" onClick={() => confirm('この請求を削除しますか？') && setData((d) => ({ ...d, invoices: d.invoices.filter((x) => x.id !== i.id) }))}>
+                      <button className="link danger" onClick={async () => (await askConfirm('この請求を削除しますか？', { okLabel: '削除', danger: true })) && setData((d) => ({ ...d, invoices: d.invoices.filter((x) => x.id !== i.id) }))}>
                         削除
                       </button>
                     )}
@@ -196,7 +197,7 @@ function NewInvoiceForm() {
   const gross = parseAmount(f.gross);
   const net = Math.round(gross / (1 + data.settings.taxRate));
   const submit = () => {
-    if (!f.customerId || !gross) return alert('取引先と請求額を入力してください');
+    if (!f.customerId || !gross) return void notify('取引先と請求額を入力してください。');
     setData((d) => ({
       ...d,
       invoices: [

@@ -37,6 +37,12 @@ npm run build    # dist/ に静的ファイルを出力（任意の静的ホス�
 npm test         # ユニットテスト
 ```
 
+## claude.ai の公開ページとして使う
+```bash
+npm run build:artifact   # artifact/sales-app.html（1ファイル）を生成
+```
+生成したHTMLにはアプリのコードと架空のサンプルデータのみが含まれ、実データは含まれません。
+
 ## データの保存について
 データはブラウザの localStorage にのみ保存され、外部サーバには送信されません。
 複数PC・複数人で共有する場合は「データ取込 → バックアップ」でJSONを受け渡してください。

@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import type { AppData } from './types';
 import { reconcile, type Ledger } from './lib/matching';
 import { todayStr } from './lib/dates';
+import { sampleData } from './lib/sample';
 
 const STORAGE_KEY = 'bz-office-sales:v1';
 
@@ -20,9 +21,9 @@ function load(): AppData {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return { ...emptyData(), ...JSON.parse(raw) };
   } catch {
-    /* 読み込めない場合は空データ */
+    /* 読み込めない場合はサンプルを表示 */
   }
-  return emptyData();
+  return sampleData(todayStr());
 }
 
 interface Store {

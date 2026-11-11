@@ -6,3 +6,4 @@ data/
 *.csv
 !src/**/__fixtures__/*.csv
 *.tsbuildinfo
+artifact/

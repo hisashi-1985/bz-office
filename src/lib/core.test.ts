@@ -4,6 +4,7 @@ import { applyInferredTerms, reconcile } from './matching';
 import { mergeImport } from './merge';
 import { cashForecast, generateForecasts, monthlyPlan } from './forecast';
 import { compareByCustomer, generateBudget } from './budget';
+import { sampleData } from './sample';
 import { dueDate, fiscalYearStart } from './dates';
 import { extractInvoiceNo, nameKey } from './names';
 import { parseCsv } from './csv';
@@ -166,5 +167,17 @@ describe('budget', () => {
     const n = rows.find((r) => r.label === '新規開拓')!;
     expect(n.budgetToDate).toBe(0);
     expect(n.landing).toBe(0);
+  });
+});
+
+describe('sample data', () => {
+  test('has an overdue invoice, a partial payment and no unallocated receipts', () => {
+    const d = sampleData('2026-11-11');
+    const L = reconcile(d, '2026-11-11');
+    expect(L.invoices.some((i) => i.status === 'overdue')).toBe(true);
+    expect(L.invoices.some((i) => i.paid > 0 && i.outstanding > 0)).toBe(true);
+    expect(L.receipts.every((r) => r.unallocated === 0)).toBe(true);
+    expect(d.budgets.length).toBeGreaterThan(0);
+    expect(d.forecasts.length).toBeGreaterThan(0);
   });
 });

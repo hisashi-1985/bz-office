@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { askConfirm } from '../components/dialog';
 import { useStore } from '../store';
 import { FiscalSelect, Section, useCurrentFiscal } from '../components/ui';
 import { AmountInput } from '../components/AmountInput';
@@ -34,9 +35,9 @@ export function BudgetView() {
     for (const m of months) if (m > from) v ? (amounts[m] = v) : delete amounts[m];
     updateLine(l.id, { amounts });
   };
-  const generate = () => {
+  const generate = async () => {
     const desc = `${BUDGET_SOURCE_LABELS[source]} × ${growth >= 0 ? '+' : ''}${growth}%`;
-    if (!confirm(`${fiscalLabel(fy)}の予算を「${desc}」で作成します。\nこの期の予算はすべて置き換わります。よろしいですか？`)) return;
+    if (!(await askConfirm(`${fiscalLabel(fy)}の予算を「${desc}」で作成します。この期の予算はすべて置き換わります。`, { okLabel: '作成する' }))) return;
     setData((d) => ({ ...d, budgets: generateBudget(d, fy, source, growth) }));
   };
   const addLine = () =>
@@ -129,8 +130,8 @@ export function BudgetView() {
                     <td>
                       <button
                         className="link danger"
-                        onClick={() =>
-                          confirm(`「${l.label}」の予算を削除しますか？`) &&
+                        onClick={async () =>
+                          (await askConfirm(`「${l.label}」の予算を削除しますか？`, { okLabel: '削除', danger: true })) &&
                           setData((d) => ({ ...d, budgets: (d.budgets ?? []).filter((x) => x.id !== l.id) }))
                         }
                       >

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { askConfirm } from '../components/dialog';
 import { useStore } from '../store';
 import { FiscalSelect, Section, useCurrentFiscal } from '../components/ui';
 import { AmountInput } from '../components/AmountInput';
@@ -33,13 +34,13 @@ export function ForecastView() {
     updateLine(l.id, { amounts });
   };
 
-  const generate = () => {
+  const generate = async () => {
     const base = fy > currentMonth ? currentMonth : fy;
     const msg =
       method === 'lastYear'
         ? `${fiscalLabel(fy)}の予測を、前年同月の実績で作成します。`
         : `${fiscalLabel(fy)}の予測を、${base}より前の${GENERATE_LABELS[method]}で作成します。`;
-    if (!confirm(`${msg}\n実績のある取引先の月額は上書きされます。よろしいですか？`)) return;
+    if (!(await askConfirm(`${msg}実績のある取引先の月額は上書きされます。`, { okLabel: '作成する' }))) return;
     setData((d) => ({ ...d, forecasts: generateForecasts(d, fy, method, base) }));
   };
 
@@ -137,7 +138,7 @@ export function ForecastView() {
                     })}
                     <td className="r strong">{num(total)}</td>
                     <td>
-                      <button className="link danger" onClick={() => confirm(`「${l.label}」を削除しますか？`) && setData((d) => ({ ...d, forecasts: d.forecasts.filter((x) => x.id !== l.id) }))}>
+                      <button className="link danger" onClick={async () => (await askConfirm(`「${l.label}」を削除しますか？`, { okLabel: '削除', danger: true })) && setData((d) => ({ ...d, forecasts: d.forecasts.filter((x) => x.id !== l.id) }))}>
                         削除
                       </button>
                     </td>
