@@ -1,0 +1,7 @@
+node_modules
+dist
+*.local
+# 会計データ（実データ）はコミットしない
+data/
+*.csv
+!src/**/__fixtures__/*.csv
